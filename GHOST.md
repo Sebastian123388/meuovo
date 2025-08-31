@@ -1,9 +1,6 @@
---[[
-    GHOST FPS KILLER - Painel com interface espectral.
-    Estética: fundo preto/cinza fantasma, título branco com brilho azulado,
-    botões ON/OFF com efeito spectral e borda pulsante.
-    by LennonTheGoat
-]]
+-- GHOST FPS KILLER - versão clean interface
+-- Painel compacto, translúcido, sem sombra pesada.
+-- Glow discreto nos botões + animação suave.
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -11,62 +8,110 @@ local playerGui = player:WaitForChild("PlayerGui")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
--- ====== DIMENSIONAMENTO =======
-local SCALE = 0.75
-local PANEL_WIDTH, PANEL_HEIGHT = math.floor(230*SCALE), math.floor(110*SCALE)
-local PANEL_RADIUS = math.floor(16*SCALE)
-local TITLE_HEIGHT = math.floor(36*SCALE)
-local BTN_WIDTH = math.floor(0.9*PANEL_WIDTH)
-local BTN_HEIGHT = math.floor(40*SCALE)
-local BTN_RADIUS = math.floor(10*SCALE)
-local BTN_FONT_SIZE = math.floor(18*SCALE)
-local TITLE_FONT_SIZE = math.floor(22*SCALE)
-local ICON_SIZE = math.floor(18*SCALE)
-local BTN_ICON_PAD = math.floor(10*SCALE)
-local BTN_Y0 = math.floor(45*SCALE)
+-- Remove acessórios/roupas
+local function removeAllAccessoriesFromCharacter()
+    local character = player.Character
+    if not character then return end
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Accessory")
+            or item:IsA("LayeredClothing")
+            or item:IsA("Shirt")
+            or item:IsA("ShirtGraphic")
+            or item:IsA("Pants")
+            or item:IsA("BodyColors")
+            or item:IsA("CharacterMesh") then
+            pcall(function() item:Destroy() end)
+        end
+    end
+end
+player.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    removeAllAccessoriesFromCharacter()
+end)
+if player.Character then
+    task.defer(removeAllAccessoriesFromCharacter)
+end
+
+-- FPS Killer
+local FPSDevourer = {}
+do
+    FPSDevourer.running = false
+    local TOOL_NAME = "Tung Bat"
+    local function equipTungBat()
+        local character = player.Character
+        local backpack = player:FindFirstChild("Backpack")
+        if not character or not backpack then return false end
+        local tool = backpack:FindFirstChild(TOOL_NAME)
+        if tool then tool.Parent = character return true end
+        return false
+    end
+    local function unequipTungBat()
+        local character = player.Character
+        local backpack = player:FindFirstChild("Backpack")
+        if not character or not backpack then return false end
+        local tool = character:FindFirstChild(TOOL_NAME)
+        if tool then tool.Parent = backpack return true end
+        return false
+    end
+
+    function FPSDevourer:Start()
+        if FPSDevourer.running then return end
+        FPSDevourer.running = true
+        FPSDevourer._stop = false
+        task.spawn(function()
+            while FPSDevourer.running and not FPSDevourer._stop do
+                equipTungBat()
+                task.wait(0.035)
+                unequipTungBat()
+                task.wait(0.035)
+            end
+        end)
+    end
+    function FPSDevourer:Stop()
+        FPSDevourer.running = false
+        FPSDevourer._stop = true
+        unequipTungBat()
+    end
+    player.CharacterAdded:Connect(function()
+        FPSDevourer.running = false
+        FPSDevourer._stop = true
+    end)
+end
 
 -- Remove painel antigo
-local old = playerGui:FindFirstChild("GhostFpsKillerPanel")
+local old = playerGui:FindFirstChild("GhostFPSKillerPanel")
 if old then old:Destroy() end
 
--- ========== PAINEL UI ==========
+-- Painel UI
 local gui = Instance.new("ScreenGui")
-gui.Name = "GhostFpsKillerPanel"
+gui.Name = "GhostFPSKillerPanel"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local main = Instance.new("Frame", gui)
 main.Name = "MainPanel"
-main.Size = UDim2.new(0, PANEL_WIDTH, 0, PANEL_HEIGHT)
-main.Position = UDim2.new(1, -PANEL_WIDTH-15, 0, 15)
-main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+main.Size = UDim2.new(0, 180, 0, 90)
+main.Position = UDim2.new(1, -200, 0, 20)
+main.BackgroundColor3 = Color3.fromRGB(30,30,30)
 main.BackgroundTransparency = 0.15
 main.BorderSizePixel = 0
 main.Active = true
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, PANEL_RADIUS)
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
 
--- Gradiente espectral
-local gradient = Instance.new("UIGradient", main)
-gradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 10)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 60, 70))
-}
-gradient.Rotation = 90
+-- Glow em volta (bem leve)
+local glow = Instance.new("UIStroke", main)
+glow.Thickness = 2
+glow.Color = Color3.fromRGB(0, 255, 140)
+glow.Transparency = 0.4
+glow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- Borda com efeito pulsante
-local uiStroke = Instance.new("UIStroke", main)
-uiStroke.Thickness = 2
-uiStroke.Color = Color3.fromRGB(180, 220, 255)
-uiStroke.Transparency = 0.4
-
-task.spawn(function()
-    while main.Parent do
-        TweenService:Create(uiStroke, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.1}):Play()
-        task.wait(2)
-        TweenService:Create(uiStroke, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency = 0.5}):Play()
-        task.wait(2)
-    end
-end)
+-- Animação de entrada (fade + scale)
+main.BackgroundTransparency = 1
+main.Size = UDim2.new(0, 0, 0, 0)
+TweenService:Create(main, TweenInfo.new(0.6, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 180, 0, 90),
+    BackgroundTransparency = 0.15
+}):Play()
 
 -- Drag
 do
@@ -94,89 +139,60 @@ do
     end)
 end
 
--- Título espectral
+-- Título
 local title = Instance.new("TextLabel", main)
 title.Name = "Title"
-title.Size = UDim2.new(1, 0, 0, TITLE_HEIGHT)
-title.Position = UDim2.new(0,0,0,0)
+title.Size = UDim2.new(1, 0, 0, 28)
 title.Text = "GHOST FPS KILLER"
-title.Font = Enum.Font.GothamBlack
-title.TextSize = TITLE_FONT_SIZE
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
 title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(220, 240, 255)
-title.TextStrokeTransparency = 0.3
-title.TextStrokeColor3 = Color3.fromRGB(140, 200, 255)
+title.TextColor3 = Color3.fromRGB(255,255,255)
 
--- Funções UI
-local function createCircleIcon(parent, y, on)
-    local icon = Instance.new("Frame", parent)
-    icon.Size = UDim2.new(0, ICON_SIZE, 0, ICON_SIZE)
-    icon.Position = UDim2.new(0, BTN_ICON_PAD, 0, y + math.floor((BTN_HEIGHT-ICON_SIZE)/2))
-    icon.BackgroundTransparency = 1
-    local circle = Instance.new("ImageLabel", icon)
-    circle.Size = UDim2.new(1, 0, 1, 0)
-    circle.BackgroundTransparency = 1
-    circle.Image = "rbxassetid://10137946418"
-    circle.ImageColor3 = (on and Color3.fromRGB(140,255,200)) or Color3.fromRGB(200,80,80)
-    return icon, circle
-end
+-- Botão Toggle
+local btn = Instance.new("TextButton", main)
+btn.Size = UDim2.new(0.9, 0, 0, 32)
+btn.Position = UDim2.new(0.05, 0, 0, 40)
+btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+btn.Text = "Ativar"
+btn.Font = Enum.Font.Gotham
+btn.TextSize = 15
+btn.TextColor3 = Color3.fromRGB(230,230,230)
+btn.AutoButtonColor = false
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 
-local function makeToggleBtn(parent, label, y, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0, BTN_WIDTH, 0, BTN_HEIGHT)
-    btn.Position = UDim2.new(0, math.floor((PANEL_WIDTH-BTN_WIDTH)/2), 0, y)
-    btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    btn.BackgroundTransparency = 0.2
-    btn.Text = label
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = BTN_FONT_SIZE
-    btn.TextColor3 = Color3.fromRGB(240,240,240)
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, BTN_RADIUS)
+-- Glow discreto no botão
+local btnStroke = Instance.new("UIStroke", btn)
+btnStroke.Thickness = 1.5
+btnStroke.Color = Color3.fromRGB(0,255,140)
+btnStroke.Transparency = 0.35
 
-    local icon, circle = createCircleIcon(parent, y, false)
-    icon.ZIndex = btn.ZIndex+1
-    btn.ZIndex = btn.ZIndex+2
+-- Hover efeito
+btn.MouseEnter:Connect(function()
+    TweenService:Create(btn, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {BackgroundColor3 = Color3.fromRGB(35,35,35)}):Play()
+end)
+btn.MouseLeave:Connect(function()
+    TweenService:Create(btn, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {BackgroundColor3 = Color3.fromRGB(25,25,25)}):Play()
+end)
 
-    local state = false
-    local function updateVisual()
-        local goal = {}
-        if state then
-            goal.BackgroundColor3 = Color3.fromRGB(50, 100, 70)
-            circle.ImageColor3 = Color3.fromRGB(140,255,200) -- verde spectral
-        else
-            goal.BackgroundColor3 = Color3.fromRGB(70, 30, 30)
-            circle.ImageColor3 = Color3.fromRGB(200,80,80) -- vermelho esmaecido
-        end
-        TweenService:Create(btn, TweenInfo.new(0.4, Enum.EasingStyle.Sine), goal):Play()
-    end
-
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        callback(state, btn)
-        updateVisual()
-    end)
-    icon.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            state = not state
-            callback(state, btn)
-            updateVisual()
-        end
-    end)
-
-    updateVisual()
-    return btn, function(v)
-        state = v
-        callback(state, btn)
-        updateVisual()
-    end
-end
-
--- Botão Ghost FPS Killer
-local btnFPSDevourer, setFPSDevourerState = makeToggleBtn(main, "Ativar Ghost FPS Killer", BTN_Y0, function(on)
-    if on then
-        -- aqui liga o loop (mantém o original)
+-- Lógica do botão
+local state = false
+btn.MouseButton1Click:Connect(function()
+    state = not state
+    if state then
+        btn.Text = "Rodando..."
+        FPSDevourer:Start()
+        TweenService:Create(btnStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
     else
-        -- aqui desliga
+        btn.Text = "Ativar"
+        FPSDevourer:Stop()
+        TweenService:Create(btnStroke, TweenInfo.new(0.3), {Transparency = 0.35}):Play()
     end
+end)
+
+-- Resetar no respawn
+player.CharacterAdded:Connect(function()
+    state = false
+    btn.Text = "Ativar"
+    FPSDevourer:Stop()
 end)
